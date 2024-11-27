@@ -54,7 +54,7 @@ jobs:
     - name: Package Library
       run: |
         mkdir -p universal/lib
-        cp build-ios-device/build/keystone.build/Release-iphoneos/libkeystone.a universal/lib/
+        cp build-ios-device/llvm/lib/Release/libkeystone.a universal/lib/
         
         # 复制头文件
         mkdir -p universal/include/keystone
