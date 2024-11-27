@@ -1,0 +1,71 @@
+name: Build iOS Static Library
+
+on:
+  push:
+    branches: [ main, master, develop, '*' ]
+  pull_request:
+    branches: [ main, master ]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: macos-latest
+    
+    steps:
+    - uses: actions/checkout@v3
+      with:
+        submodules: 'recursive'
+    
+    - name: Install CMake
+      run: |
+        brew install cmake
+
+    - name: Setup Xcode
+      uses: maxim-lobanov/setup-xcode@v1
+      with:
+        xcode-version: '15.4'
+        
+    - name: Download iOS toolchain
+      run: |
+        curl -L https://raw.githubusercontent.com/leetal/ios-cmake/master/ios.toolchain.cmake -o ios.toolchain.cmake
+
+    - name: Build for iOS Device (arm64)
+      run: |
+        mkdir build-ios-device
+        cd build-ios-device
+        cmake .. \
+          -GXcode \
+          -DCMAKE_TOOLCHAIN_FILE=../ios.toolchain.cmake \
+          -DPLATFORM=OS64 \
+          -DENABLE_BITCODE=0 \
+          -DENABLE_ARC=0 \
+          -DENABLE_VISIBILITY=1 \
+          -DARCHS="arm64" \
+          -DCMAKE_BUILD_TYPE=Release \
+          -DDEPLOYMENT_TARGET=13.0 \
+          -DCMAKE_C_FLAGS="-arch arm64 -Wno-shorten-64-to-32" \
+          -DCMAKE_CXX_FLAGS="-arch arm64 -Wno-shorten-64-to-32" \
+          -DLLVM_TARGETS_TO_BUILD="AArch64;ARM" \
+          -DBUILD_SHARED_LIBS=OFF \
+          -DKEYSTONE_BUILD_STATIC_RUNTIME=ON
+
+        cmake --build . --config Release --target keystone
+
+    - name: Package Library
+      run: |
+        mkdir -p universal/lib
+        cp build-ios-device/build/keystone.build/Release-iphoneos/libkeystone.a universal/lib/
+        
+        # 复制头文件
+        mkdir -p universal/include/keystone
+        cp -r include/* universal/include/keystone/
+        
+        # 打包成zip
+        cd universal
+        zip -r ../keystone-ios.zip .
+
+    - name: Upload Artifact
+      uses: actions/upload-artifact@v3
+      with:
+        name: keystone-ios
+        path: keystone-ios.zip
