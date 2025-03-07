@@ -1,5 +1,5 @@
 name: Build iOS Static Library
-
+ 
 on:
   push:
     branches: [ main, master, develop, '*' ]
